@@ -11,14 +11,31 @@ st.set_page_config(page_title="실시간 증권 뉴스", layout="wide")
 # 2. 자동 새로고침 설정 (10분)
 st_autorefresh(interval=600000, key="news_refresh")
 
-# 3. 디자인 CSS
+# 3. 디자인 CSS (visited 속성 추가)
 st.markdown("""
     <style>
     .block-container { padding-top: 1.5rem !important; }
-    .news-item { margin-bottom: 2px; line-height: 1.2; }
-    .time-text { color: #888; font-size: 0.8rem; margin-left: 8px; }
-    .news-link { text-decoration: none; color: #1f77b4; font-weight: 600; font-size: 0.95rem; }
-    .news-link:hover { color: #ff4b4b; text-decoration: underline; }
+    .news-item { margin-bottom: 2px; line-height: 1.4; }
+    .time-text { color: #888; font-size: 0.8rem; margin-left: 8px; font-weight: normal; }
+    
+    /* [기본] 뉴스 링크 색상: 선명한 파란색 */
+    .news-link { 
+        text-decoration: none; 
+        color: #0066cc; 
+        font-weight: 600; 
+        font-size: 0.95rem; 
+    }
+    
+    /* [방문후] 클릭했던 링크 색상: 회색 */
+    .news-link:visited { 
+        color: #bbbbbb !important; 
+    }
+    
+    /* [마우스 오버] 마우스를 올렸을 때: 빨간색 */
+    .news-link:hover { 
+        color: #ff4b4b; 
+        text-decoration: underline; 
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -42,25 +59,29 @@ if os.path.exists('news.json'):
     with open('news.json', 'r', encoding='utf-8') as f:
         news_data = json.load(f)
     
+    # 실제 발행시간 기준 내림차순 정렬
+    news_data.sort(key=lambda x: x['pub_time'], reverse=True)
+    
     count = 0
     for news in news_data:
+        # 필터링 로직
         if any(key.lower() in news['title'].lower() for key in exclude_list if key.strip()):
             continue
         if search_term and search_term.lower() not in news['title'].lower():
             continue
             
-        # [수정] st.divider() 대신 HTML의 <hr> 태그를 사용하여 에러를 방지하고 간격을 조절합니다.
+        # 뉴스 출력
         st.markdown(f"""
             <div class="news-item">
-                <a class="news-link" href="{news['link']}" target="_blank">
+                <a class="news-link" href="{news['link']}" target="_blank" rel="noopener noreferrer">
                     • {news['title']}
                 </a>
                 <span class="time-text">[{news['pub_time']}]</span>
             </div>
-            <hr style="margin: 8px 0; opacity: 0.2;">
+            <hr style="margin: 8px 0; opacity: 0.15;">
             """, unsafe_allow_html=True)
         count += 1
     
-    if count == 0: st.info("표시할 뉴스가 없습니다.")
+    if count == 0: st.info("조건에 맞는 뉴스가 없습니다.")
 else:
-    st.warning("데이터 수집 중입니다...")
+    st.warning("데이터 수집 중...")
