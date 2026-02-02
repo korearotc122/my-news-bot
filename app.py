@@ -48,4 +48,5 @@ if os.path.exists('news.json'):
     if count == 0:
         st.write("표시할 뉴스가 없습니다.")
 else:
+
     st.warning("아직 수집된 뉴스가 없습니다. 잠시만 기다려주세요 (10분 주기).")
