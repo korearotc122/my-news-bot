@@ -1,0 +1,51 @@
+import streamlit as st
+import json
+import os
+import pandas as pd
+
+# 페이지 설정
+st.set_page_config(page_title="증권 속보 모니터링", layout="wide")
+
+# 1. 제외 키워드 로드 (엑셀 파일)
+def get_exclude_list():
+    exclude_file = 'exclude.xlsx'
+    if os.path.exists(exclude_file):
+        try:
+            df = pd.read_excel(exclude_file)
+            return df.iloc[:, 0].dropna().astype(str).tolist()
+        except:
+            return []
+    return []
+
+# 2. 메인 UI 및 검색바
+st.title("🗞️ 실시간 증권 뉴스 피드")
+search_term = st.sidebar.text_input("🔍 제목 키워드 검색", "")
+
+# 3. 데이터 표시
+if os.path.exists('news.json'):
+    with open('news.json', 'r', encoding='utf-8') as f:
+        news_data = json.load(f)
+    
+    exclude_list = get_exclude_list()
+    st.sidebar.write(f"현재 적용된 제외 키워드: {len(exclude_list)}개")
+    
+    count = 0
+    for news in news_data:
+        # 필터링 1: 제외 키워드 처리
+        if any(key.lower() in news['title'].lower() for key in exclude_list if key):
+            continue
+            
+        # 필터링 2: 검색어 처리
+        if search_term and search_term.lower() not in news['title'].lower():
+            continue
+            
+        # 뉴스 출력 (제목 / 발행일시 형태)
+        # 제목을 클릭하면 해당 링크로 이동
+        st.markdown(f"**[{news['title']}]({news['link']})** &nbsp;&nbsp; <small style='color:gray;'>{news['pub_time']}</small>", unsafe_allow_html=True)
+        st.divider()
+        count += 1
+    
+    if count == 0:
+        st.write("표시할 뉴스가 없습니다.")
+else:
+    st.warning("아직 수집된 뉴스가 없습니다. 잠시만 기다려주세요 (10분 주기).")

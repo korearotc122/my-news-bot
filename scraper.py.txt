@@ -1,0 +1,63 @@
+import requests
+from bs4 import BeautifulSoup
+import json
+import os
+from datetime import datetime
+
+# 제공해주신 실시간 속보 URL
+TARGET_URL = "https://finance.naver.com/news/news_list.naver?mode=LSS2D&section_id=101&section_id2=258"
+
+def scrape_news():
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"}
+    
+    try:
+        resp = requests.get(TARGET_URL, headers=headers)
+        resp.encoding = 'euc-kr'  # 네이버 금융 특유의 한글 깨짐 방지
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        
+        new_articles = []
+        # 뉴스 항목(dl)들을 찾습니다.
+        items = soup.select('dl') 
+
+        for item in items:
+            subject = item.select_one('.articleSubject a')
+            if not subject: continue
+            
+            title = subject.get_text(strip=True)
+            link = "https://finance.naver.com" + subject['href']
+            
+            # 발행일시 추출
+            wdate = item.select_one('.wdate')
+            pub_time = wdate.get_text(strip=True) if wdate else datetime.now().strftime("%Y.%m.%d %H:%M")
+            
+            new_articles.append({"title": title, "link": link, "pub_time": pub_time})
+
+        # 기존 데이터 불러오기 및 중복 제거
+        db_file = 'news.json'
+        if os.path.exists(db_file):
+            with open(db_file, 'r', encoding='utf-8') as f:
+                try:
+                    db = json.load(f)
+                except:
+                    db = []
+        else:
+            db = []
+
+        existing_titles = {a['title'] for a in db}
+        added_count = 0
+        for a in new_articles:
+            if a['title'] not in existing_titles:
+                db.insert(0, a) # 최신 뉴스 상단 추가
+                added_count += 1
+        
+        # 최근 300개만 남기고 저장
+        with open(db_file, 'w', encoding='utf-8') as f:
+            json.dump(db[:300], f, ensure_ascii=False, indent=4)
+            
+        print(f"새로운 뉴스 {added_count}개 수집 완료.")
+
+    except Exception as e:
+        print(f"오류 발생: {e}")
+
+if __name__ == "__main__":
+    scrape_news()
